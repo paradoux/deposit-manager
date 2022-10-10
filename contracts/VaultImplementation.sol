@@ -30,7 +30,7 @@ contract VaultImplementation {
     bool public isAmountAgreed;
     address public designatedAdjudicator;
     bool public isAdjudicatorAccepted;
-    bool public disputeResolved;
+    bool public isDisputeResolved;
 
     ///
     /// STRUCTS

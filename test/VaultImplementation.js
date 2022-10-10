@@ -53,28 +53,54 @@ context("VaultFactoryContract", function () {
         expect(responsePropertyOwner).to.equal(propertyOwner.address)
       })
 
-      //   it("should set the other vault variables to the correct values", async function () {
-      //     await createAndDeployContracts(factoryOwner)
-      //     await initializeVault(propertyOwner, depositAmount, propertyRenter)
-      //     const responseVaultId = await deployedVault.vaultId()
-      //     const responsePropertyRenter = await deployedVault.propertyRenter()
-      //     expect(responsePropertyRenter).to.equal(propertyOwner.address)
-      //     // it should set the property renter
-      //     // it should set the deposit amount
-      //     // Should be default value:
-      //     // proposedAmountToReturn
-      //     // amountToReturn
-      //     // isDepositStored
-      //     // isDepositReturned
-      //     // isAmountAgreed
-      //     // designatedAdjudicator
-      //     // isAdjudicatorAccepted
-      //     // disputeResolved
-      //   })
+      it("should set the other vault variables to the correct values", async function () {
+        await createAndDeployContracts(factoryOwner)
+        await initializeVault(
+          propertyOwner,
+          depositAmount,
+          propertyRenter.address
+        )
+        const responseVaultId = await deployedVault.vaultId()
+        const responsePropertyRenter = await deployedVault.propertyRenter()
+        const responseDeposit = await deployedVault.deposit()
+
+        const responseProposedAmountToReturn =
+          await deployedVault.proposedAmountToReturn()
+        const responseAmountToReturn = await deployedVault.amountToReturn()
+        const responseIsDepositStored = await deployedVault.isDepositStored()
+        const responseIsDepositReturned =
+          await deployedVault.isDepositReturned()
+
+        const responseIsAmountAgreed = await deployedVault.isAmountAgreed()
+        const responseDesignatedAdjudicator =
+          await deployedVault.designatedAdjudicator()
+
+        const responseIsAdjudicatorAccepted =
+          await deployedVault.isAdjudicatorAccepted()
+
+        const responseIsDisputeResolved =
+          await deployedVault.isDisputeResolved()
+
+        expect(responseVaultId).to.equal("0")
+        expect(responsePropertyRenter).to.equal(propertyRenter.address)
+        expect(responseDeposit).to.equal(depositAmount)
+
+        expect(responseProposedAmountToReturn).to.equal("0")
+        expect(responseAmountToReturn).to.equal("0")
+
+        expect(responseIsDepositStored).to.equal(false)
+        expect(responseIsDepositReturned).to.equal(false)
+        expect(responseIsAmountAgreed).to.equal(false)
+        expect(responseDesignatedAdjudicator).to.equal(
+          "0x0000000000000000000000000000000000000000"
+        )
+        expect(responseIsAdjudicatorAccepted).to.equal(false)
+        expect(responseIsDisputeResolved).to.equal(false)
+      })
     })
   })
 
-  context.only("Deposit storing", function () {
+  context("Deposit storing", function () {
     beforeEach(async function () {
       await createAndDeployContracts(factoryOwner)
     })
@@ -109,7 +135,7 @@ context("VaultFactoryContract", function () {
         ).to.be.revertedWith("Incorrect amount sent")
       })
     })
-    describe.only("when deposit has already been stored", function () {
+    describe("when deposit has already been stored", function () {
       it("should revert with the correct message", async function () {
         await initializeVault(
           propertyOwner,
