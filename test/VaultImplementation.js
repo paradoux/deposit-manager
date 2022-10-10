@@ -1,126 +1,177 @@
-// const {
-//   time,
-//   loadFixture,
-// } = require("@nomicfoundation/hardhat-network-helpers");
-// const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
-// const { expect } = require("chai");
+const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs")
+const { ethers } = require("hardhat")
+const { expectRevert } = require("@openzeppelin/test-helpers")
+const { expect } = require("chai")
 
-// describe("Lock", function () {
-//   // We define a fixture to reuse the same setup in every test.
-//   // We use loadFixture to run this setup once, snapshot that state,
-//   // and reset Hardhat Network to that snapshot in every test.
-//   async function deployOneYearLockFixture() {
-//     const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
-//     const ONE_GWEI = 1_000_000_000;
+let factoryOwner,
+  secondAccount,
+  thirdAccount,
+  propertyOwner,
+  propertyRenter,
+  VaultImplementationContract,
+  vaultImplementationContract,
+  VaultFactoryContract,
+  vaultFactoryContract,
+  deployedVault
 
-//     const lockedAmount = ONE_GWEI;
-//     const unlockTime = (await time.latest()) + ONE_YEAR_IN_SECS;
+const depositAmount = ethers.utils.parseEther("0.1")
+const incorrectDepositAmount = ethers.utils.parseEther("0.01")
 
-//     // Contracts are deployed using the first signer/account by default
-//     const [owner, otherAccount] = await ethers.getSigners();
+context("VaultFactoryContract", function () {
+  beforeEach(async function () {
+    ;[
+      factoryOwner,
+      secondAccount,
+      thirdAccount,
+      propertyRenter,
+      propertyOwner
+    ] = await ethers.getSigners()
+  })
+  context("Contract Initialisation", function () {
+    describe("when factoryOwner has deployed the Factory Contract", async function () {
+      it("should be set as the generalAdmin of the created vault", async function () {
+        await createAndDeployContracts(factoryOwner)
+        await initializeVault(
+          propertyOwner,
+          depositAmount,
+          "0x0000000000000000000000000000000000000000"
+        )
+        const responseGeneralAdmin = await deployedVault.generalAdmin()
+        expect(responseGeneralAdmin).to.equal(factoryOwner.address)
+      })
+    })
 
-//     const Lock = await ethers.getContractFactory("Lock");
-//     const lock = await Lock.deploy(unlockTime, { value: lockedAmount });
+    describe("when propertyOwner creates the vault", async function () {
+      it("should be set as the propertyOwner of the vault", async function () {
+        await createAndDeployContracts(factoryOwner)
+        await initializeVault(
+          propertyOwner,
+          depositAmount,
+          "0x0000000000000000000000000000000000000000"
+        )
+        const responsePropertyOwner = await deployedVault.propertyOwner()
+        expect(responsePropertyOwner).to.equal(propertyOwner.address)
+      })
 
-//     return { lock, unlockTime, lockedAmount, owner, otherAccount };
-//   }
+      //   it("should set the other vault variables to the correct values", async function () {
+      //     await createAndDeployContracts(factoryOwner)
+      //     await initializeVault(propertyOwner, depositAmount, propertyRenter)
+      //     const responseVaultId = await deployedVault.vaultId()
+      //     const responsePropertyRenter = await deployedVault.propertyRenter()
+      //     expect(responsePropertyRenter).to.equal(propertyOwner.address)
+      //     // it should set the property renter
+      //     // it should set the deposit amount
+      //     // Should be default value:
+      //     // proposedAmountToReturn
+      //     // amountToReturn
+      //     // isDepositStored
+      //     // isDepositReturned
+      //     // isAmountAgreed
+      //     // designatedAdjudicator
+      //     // isAdjudicatorAccepted
+      //     // disputeResolved
+      //   })
+    })
+  })
 
-//   describe("Deployment", function () {
-//     it("Should set the right unlockTime", async function () {
-//       const { lock, unlockTime } = await loadFixture(deployOneYearLockFixture);
+  context.only("Deposit storing", function () {
+    beforeEach(async function () {
+      await createAndDeployContracts(factoryOwner)
+    })
 
-//       expect(await lock.unlockTime()).to.equal(unlockTime);
-//     });
+    describe("when sender is not the property renter", function () {
+      it("should revert with the correct message", async function () {
+        await initializeVault(
+          propertyOwner,
+          depositAmount,
+          propertyRenter.address
+        )
 
-//     it("Should set the right owner", async function () {
-//       const { lock, owner } = await loadFixture(deployOneYearLockFixture);
+        await expect(
+          deployedVault
+            .connect(secondAccount)
+            .storeDeposit({ value: depositAmount })
+        ).to.be.revertedWith("The caller is not the property renter")
+      })
+    })
+    describe("when msg value is not equal to deposit", function () {
+      it("should revert with the correct message", async function () {
+        await initializeVault(
+          propertyOwner,
+          depositAmount,
+          propertyRenter.address
+        )
 
-//       expect(await lock.owner()).to.equal(owner.address);
-//     });
+        await expect(
+          deployedVault
+            .connect(propertyRenter)
+            .storeDeposit({ value: incorrectDepositAmount })
+        ).to.be.revertedWith("Incorrect amount sent")
+      })
+    })
+    describe.only("when deposit has already been stored", function () {
+      it("should revert with the correct message", async function () {
+        await initializeVault(
+          propertyOwner,
+          depositAmount,
+          propertyRenter.address
+        )
 
-//     it("Should receive and store the funds to lock", async function () {
-//       const { lock, lockedAmount } = await loadFixture(
-//         deployOneYearLockFixture
-//       );
+        await deployedVault
+          .connect(propertyRenter)
+          .storeDeposit({ value: depositAmount })
 
-//       expect(await ethers.provider.getBalance(lock.address)).to.equal(
-//         lockedAmount
-//       );
-//     });
+        await expect(
+          deployedVault
+            .connect(propertyRenter)
+            .storeDeposit({ value: depositAmount })
+        ).to.be.revertedWith("The deposit is already stored")
+      })
+    })
 
-//     it("Should fail if the unlockTime is not in the future", async function () {
-//       // We don't use the fixture here because we want a different deployment
-//       const latestTime = await time.latest();
-//       const Lock = await ethers.getContractFactory("Lock");
-//       await expect(Lock.deploy(latestTime, { value: 1 })).to.be.revertedWith(
-//         "Unlock time should be in the future"
-//       );
-//     });
-//   });
+    describe("when there was no specified property renter", function () {
+      it("should allow the msg value to be stored as deposit", async function () {
+        await initializeVault(
+          propertyOwner,
+          depositAmount,
+          "0x0000000000000000000000000000000000000000"
+        )
 
-//   describe("Withdrawals", function () {
-//     describe("Validations", function () {
-//       it("Should revert with the right error if called too soon", async function () {
-//         const { lock } = await loadFixture(deployOneYearLockFixture);
+        await deployedVault
+          .connect(propertyRenter)
+          .storeDeposit({ value: depositAmount })
+      })
+      it("should set the msg sender as the property renter", async function () {})
+    })
 
-//         await expect(lock.withdraw()).to.be.revertedWith(
-//           "You can't withdraw yet"
-//         );
-//       });
+    describe("when there was a specified property renter", function () {
+      it("should not change the property renter", async function () {})
+    })
 
-//       it("Should revert with the right error if called from another account", async function () {
-//         const { lock, unlockTime, otherAccount } = await loadFixture(
-//           deployOneYearLockFixture
-//         );
+    // It should increase contract balance
+    // it should set the isDepositStored to true
+  })
+})
 
-//         // We can increase the time in Hardhat Network
-//         await time.increaseTo(unlockTime);
+const createAndDeployContracts = async (generalAdmin) => {
+  VaultFactoryContract = await ethers.getContractFactory("VaultFactory")
+  VaultImplementationContract = await ethers.getContractFactory(
+    "VaultImplementation"
+  )
+  vaultImplementationContract = await VaultImplementationContract.deploy()
+  await vaultImplementationContract.deployed()
+  vaultFactoryContract = await VaultFactoryContract.connect(
+    generalAdmin
+  ).deploy(vaultImplementationContract.address)
+  await vaultFactoryContract.deployed()
+}
 
-//         // We use lock.connect() to send a transaction from another account
-//         await expect(lock.connect(otherAccount).withdraw()).to.be.revertedWith(
-//           "You aren't the owner"
-//         );
-//       });
-
-//       it("Shouldn't fail if the unlockTime has arrived and the owner calls it", async function () {
-//         const { lock, unlockTime } = await loadFixture(
-//           deployOneYearLockFixture
-//         );
-
-//         // Transactions are sent using the first signer by default
-//         await time.increaseTo(unlockTime);
-
-//         await expect(lock.withdraw()).not.to.be.reverted;
-//       });
-//     });
-
-//     describe("Events", function () {
-//       it("Should emit an event on withdrawals", async function () {
-//         const { lock, unlockTime, lockedAmount } = await loadFixture(
-//           deployOneYearLockFixture
-//         );
-
-//         await time.increaseTo(unlockTime);
-
-//         await expect(lock.withdraw())
-//           .to.emit(lock, "Withdrawal")
-//           .withArgs(lockedAmount, anyValue); // We accept any value as `when` arg
-//       });
-//     });
-
-//     describe("Transfers", function () {
-//       it("Should transfer the funds to the owner", async function () {
-//         const { lock, unlockTime, lockedAmount, owner } = await loadFixture(
-//           deployOneYearLockFixture
-//         );
-
-//         await time.increaseTo(unlockTime);
-
-//         await expect(lock.withdraw()).to.changeEtherBalances(
-//           [owner, lock],
-//           [lockedAmount, -lockedAmount]
-//         );
-//       });
-//     });
-//   });
-// });
+const initializeVault = async (owner, depositAmount, renter) => {
+  await vaultFactoryContract
+    .connect(owner)
+    .createNewVault(depositAmount, renter)
+  const clonedContract = await vaultFactoryContract.deployedVaults("0")
+  deployedVault = await VaultImplementationContract.attach(
+    clonedContract.deployedAddress
+  )
+}
