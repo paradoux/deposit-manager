@@ -47,13 +47,7 @@ contract VaultFactory is Pausable, Ownable  {
     /// EVENTS
     ///
 
-    event VaultCreated(
-        uint256 vaultId,
-        address vaultAddress, 
-        uint256 implementationVersion,
-        address creatorAddress
-    );
-
+    event VaultCreated(uint256 vaultId, address vaultAddress, uint256 vaultImplementationVersion, address generalAdmin, address factoryAddress, address propertyOwner, address propertyRenter, uint256 deposit);
     event FailedTransfer(address receiver, uint256 amount);
 
     constructor(
@@ -93,8 +87,8 @@ contract VaultFactory is Pausable, Ownable  {
                 deployedAddress: newVaultAddress
             })
         );
-        emit VaultCreated(vaultId, newVaultAddress, latestVaultImplementationVersionId, msg.sender);
 
+        emit VaultCreated(vaultId, newVaultAddress, latestVaultImplementationVersionId, owner(), address(this), msg.sender, renter, deposit);
         vaultId += 1;
         return newVaultAddress;
     }
@@ -109,7 +103,7 @@ contract VaultFactory is Pausable, Ownable  {
     }
 
     function withdrawFunds(address receiver) public onlyAdmin {
-        _safeTransfert(receiver, address(this).balance);
+        _safeTransfer(receiver, address(this).balance);
     }
 
     function setNewVaultImplementation(address _vaultImplementation) public onlyAdmin {
@@ -139,7 +133,7 @@ contract VaultFactory is Pausable, Ownable  {
     ///INTERNAL FUNCTIONS
     ///
 
-    function _safeTransfert(address receiver, uint256 amount) internal {
+    function _safeTransfer(address receiver, uint256 amount) internal {
         uint256 balance = address(this).balance;
         if (balance < amount) require(false, "Not enough in contract balance");
 

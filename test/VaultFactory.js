@@ -165,7 +165,7 @@ context("VaultFactoryContract", function () {
         expect(secondVault.creator).to.be.equal(propertyOwner.address)
       })
 
-      it("should emit the VaultLineCreated event with the correct data", async function () {
+      it("should emit the VaultCreated event with the correct data", async function () {
         await createAndDeployContracts()
         await expect(
           vaultFactoryContract
@@ -173,7 +173,16 @@ context("VaultFactoryContract", function () {
             .createNewVault(depositAmount, propertyRenter.address)
         )
           .to.emit(vaultFactoryContract, "VaultCreated")
-          .withArgs("0", anyValue, "0", propertyOwner.address)
+          .withArgs(
+            "0",
+            anyValue,
+            "0",
+            factoryOwner.address,
+            vaultFactoryContract.address,
+            propertyOwner.address,
+            propertyRenter.address,
+            depositAmount
+          )
       })
     })
 
