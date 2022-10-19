@@ -6,6 +6,7 @@ let factoryOwner,
   thirdAccount,
   propertyOwner,
   propertyRenter,
+  rentalEnd,
   VaultImplementationContract,
   vaultImplementationContract,
   VaultFactoryContract,
@@ -16,6 +17,7 @@ const depositAmount = ethers.utils.parseEther("0.1")
 const depositChunkReturnedToRenter = ethers.utils.parseEther("0.05")
 const aboveDepositAmount = ethers.utils.parseEther("0.2")
 const incorrectDepositAmount = ethers.utils.parseEther("0.01")
+const oneWeekInSeconds = 604800
 
 context("VaultFactoryContract", function () {
   beforeEach(async function () {
@@ -26,6 +28,9 @@ context("VaultFactoryContract", function () {
       propertyRenter,
       propertyOwner
     ] = await ethers.getSigners()
+    const startedBlock = await ethers.provider.getBlock()
+    const startedBlockTimestamp = startedBlock.timestamp
+    rentalEnd = startedBlockTimestamp + oneWeekInSeconds
   })
   context("Contract Initialization", function () {
     describe("when factoryOwner has deployed the Factory Contract", async function () {
@@ -34,7 +39,8 @@ context("VaultFactoryContract", function () {
         await initializeVault(
           propertyOwner,
           depositAmount,
-          "0x0000000000000000000000000000000000000000"
+          propertyRenter.address,
+          rentalEnd
         )
         const responseGeneralAdmin = await deployedVault.generalAdmin()
         expect(responseGeneralAdmin).to.equal(factoryOwner.address)
@@ -47,7 +53,8 @@ context("VaultFactoryContract", function () {
         await initializeVault(
           propertyOwner,
           depositAmount,
-          "0x0000000000000000000000000000000000000000"
+          propertyRenter.address,
+          rentalEnd
         )
         const responsePropertyOwner = await deployedVault.propertyOwner()
         expect(responsePropertyOwner).to.equal(propertyOwner.address)
@@ -58,7 +65,8 @@ context("VaultFactoryContract", function () {
         await initializeVault(
           propertyOwner,
           depositAmount,
-          propertyRenter.address
+          propertyRenter.address,
+          rentalEnd
         )
         const responseVaultId = await deployedVault.vaultId()
         const responsePropertyRenter = await deployedVault.propertyRenter()
@@ -97,7 +105,8 @@ context("VaultFactoryContract", function () {
         await initializeVault(
           propertyOwner,
           depositAmount,
-          propertyRenter.address
+          propertyRenter.address,
+          rentalEnd
         )
 
         await expect(
@@ -113,7 +122,8 @@ context("VaultFactoryContract", function () {
         await initializeVault(
           propertyOwner,
           depositAmount,
-          propertyRenter.address
+          propertyRenter.address,
+          rentalEnd
         )
 
         await expect(
@@ -129,7 +139,8 @@ context("VaultFactoryContract", function () {
         await initializeVault(
           propertyOwner,
           depositAmount,
-          propertyRenter.address
+          propertyRenter.address,
+          rentalEnd
         )
 
         await deployedVault
@@ -149,7 +160,8 @@ context("VaultFactoryContract", function () {
         await initializeVault(
           propertyOwner,
           depositAmount,
-          "0x0000000000000000000000000000000000000000"
+          propertyRenter.address,
+          rentalEnd
         )
 
         await deployedVault
@@ -167,7 +179,8 @@ context("VaultFactoryContract", function () {
         await initializeVault(
           propertyOwner,
           depositAmount,
-          propertyRenter.address
+          propertyRenter.address,
+          rentalEnd
         )
 
         await deployedVault
@@ -185,7 +198,8 @@ context("VaultFactoryContract", function () {
         await initializeVault(
           propertyOwner,
           depositAmount,
-          propertyRenter.address
+          propertyRenter.address,
+          rentalEnd
         )
         const initialContractBalance = await ethers.provider.getBalance(
           deployedVault.address
@@ -208,7 +222,8 @@ context("VaultFactoryContract", function () {
         await initializeVault(
           propertyOwner,
           depositAmount,
-          propertyRenter.address
+          propertyRenter.address,
+          rentalEnd
         )
 
         await deployedVault
@@ -224,7 +239,8 @@ context("VaultFactoryContract", function () {
         await initializeVault(
           propertyOwner,
           depositAmount,
-          propertyRenter.address
+          propertyRenter.address,
+          rentalEnd
         )
 
         await expect(
@@ -249,12 +265,14 @@ context("VaultFactoryContract", function () {
       await initializeVault(
         propertyOwner,
         depositAmount,
-        propertyRenter.address
+        propertyRenter.address,
+        rentalEnd
       )
     })
 
     describe("when the caller is not the property owner", function () {
       it("should revert with the correct message", async function () {
+        await ethers.provider.send("evm_setNextBlockTimestamp", [rentalEnd + 1])
         await expect(
           deployedVault.connect(thirdAccount).setAmountToReturn(depositAmount)
         ).to.be.revertedWith("The caller is not the property owner")
@@ -263,6 +281,7 @@ context("VaultFactoryContract", function () {
 
     describe("when no deposit has been stored", function () {
       it("should revert with the correct message", async function () {
+        await ethers.provider.send("evm_setNextBlockTimestamp", [rentalEnd + 1])
         await expect(
           deployedVault.connect(propertyOwner).setAmountToReturn(depositAmount)
         ).to.be.revertedWith("No deposit has been stored")
@@ -274,6 +293,8 @@ context("VaultFactoryContract", function () {
         await deployedVault
           .connect(propertyRenter)
           .storeDeposit({ value: depositAmount })
+
+        await ethers.provider.send("evm_setNextBlockTimestamp", [rentalEnd + 1])
 
         await expect(
           deployedVault
@@ -289,6 +310,8 @@ context("VaultFactoryContract", function () {
           .connect(propertyRenter)
           .storeDeposit({ value: depositAmount })
 
+        await ethers.provider.send("evm_setNextBlockTimestamp", [rentalEnd + 1])
+
         await deployedVault
           .connect(propertyOwner)
           .setAmountToReturn(depositChunkReturnedToRenter)
@@ -301,6 +324,15 @@ context("VaultFactoryContract", function () {
       })
     })
 
+    describe("when the rental period has not ended", function () {
+      it("should revert with the correct message", async function () {
+        await ethers.provider.send("evm_setNextBlockTimestamp", [rentalEnd - 1])
+        await expect(
+          deployedVault.connect(propertyOwner).setAmountToReturn(depositAmount)
+        ).to.be.revertedWith("Rental period not ended")
+      })
+    })
+
     describe("when a proposed amount is set", function () {
       it("should update the amountToReturn with the proposedAmount", async function () {
         const responseInitialAmountToReturn =
@@ -309,6 +341,8 @@ context("VaultFactoryContract", function () {
         await deployedVault
           .connect(propertyRenter)
           .storeDeposit({ value: depositAmount })
+
+        await ethers.provider.send("evm_setNextBlockTimestamp", [rentalEnd + 1])
 
         await deployedVault
           .connect(propertyOwner)
@@ -323,6 +357,8 @@ context("VaultFactoryContract", function () {
         await deployedVault
           .connect(propertyRenter)
           .storeDeposit({ value: depositAmount })
+
+        await ethers.provider.send("evm_setNextBlockTimestamp", [rentalEnd + 1])
 
         const responseInitialAmountToReturn =
           await deployedVault.amountToReturn()
@@ -350,11 +386,13 @@ context("VaultFactoryContract", function () {
       await initializeVault(
         propertyOwner,
         depositAmount,
-        propertyRenter.address
+        propertyRenter.address,
+        rentalEnd
       )
       await deployedVault
         .connect(propertyRenter)
         .storeDeposit({ value: depositAmount })
+      await ethers.provider.send("evm_setNextBlockTimestamp", [rentalEnd + 1])
     })
 
     describe("when the caller is not the propertyRenter", function () {
@@ -400,11 +438,13 @@ context("VaultFactoryContract", function () {
       await initializeVault(
         propertyOwner,
         depositAmount,
-        propertyRenter.address
+        propertyRenter.address,
+        rentalEnd
       )
       await deployedVault
         .connect(propertyRenter)
         .storeDeposit({ value: depositAmount })
+      await ethers.provider.send("evm_setNextBlockTimestamp", [rentalEnd + 1])
     })
 
     describe("when the caller is not the propertyRenter", function () {
@@ -462,7 +502,8 @@ context("VaultFactoryContract", function () {
       await initializeVault(
         propertyOwner,
         depositAmount,
-        propertyRenter.address
+        propertyRenter.address,
+        rentalEnd
       )
     })
 
@@ -499,6 +540,7 @@ context("VaultFactoryContract", function () {
         await deployedVault
           .connect(propertyRenter)
           .storeDeposit({ value: depositAmount })
+        await ethers.provider.send("evm_setNextBlockTimestamp", [rentalEnd + 1])
 
         await deployedVault
           .connect(propertyOwner)
@@ -574,7 +616,8 @@ context("VaultFactoryContract", function () {
       await initializeVault(
         propertyOwner,
         depositAmount,
-        propertyRenter.address
+        propertyRenter.address,
+        rentalEnd
       )
     })
 
@@ -599,6 +642,7 @@ context("VaultFactoryContract", function () {
         deployedVault
           .connect(propertyRenter)
           .storeDeposit({ value: depositAmount })
+        await ethers.provider.send("evm_setNextBlockTimestamp", [rentalEnd + 1])
 
         await expect(
           deployedVault.connect(propertyOwner).claimOwnerDeposit()
@@ -611,6 +655,8 @@ context("VaultFactoryContract", function () {
         await deployedVault
           .connect(propertyRenter)
           .storeDeposit({ value: depositAmount })
+
+        await ethers.provider.send("evm_setNextBlockTimestamp", [rentalEnd + 1])
 
         await deployedVault
           .connect(propertyOwner)
@@ -695,11 +741,13 @@ context("VaultFactoryContract", function () {
       await initializeVault(
         propertyOwner,
         depositAmount,
-        propertyRenter.address
+        propertyRenter.address,
+        rentalEnd
       )
       await deployedVault
         .connect(propertyRenter)
         .storeDeposit({ value: depositAmount })
+      await ethers.provider.send("evm_setNextBlockTimestamp", [rentalEnd + 1])
 
       await deployedVault
         .connect(propertyOwner)
@@ -753,7 +801,7 @@ const createAndDeployContracts = async (generalAdmin) => {
 const initializeVault = async (owner, depositAmount, renter) => {
   await vaultFactoryContract
     .connect(owner)
-    .createNewVault(depositAmount, renter)
+    .createNewVault(depositAmount, renter, rentalEnd)
   const clonedContract = await vaultFactoryContract.deployedVaults("0")
   deployedVault = await VaultImplementationContract.attach(
     clonedContract.deployedAddress

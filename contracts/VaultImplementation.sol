@@ -3,8 +3,6 @@ pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 
-// Add pausable for when vault closed at the end of the flow?
-
 contract VaultImplementation is Pausable{
     using Address for address;
 
@@ -18,6 +16,7 @@ contract VaultImplementation is Pausable{
     uint256 public vaultImplementationVersion;
 
     uint256 public vaultId;
+    uint256 public rentalPeriodEnd;
     uint256 public deposit;
     address public propertyOwner;
     address public propertyRenter;
@@ -37,6 +36,7 @@ contract VaultImplementation is Pausable{
         uint256 _vaultId;
         address _propertyOwner;
         address _propertyRenter;
+        uint256 _rentalPeriodEnd;
         uint256 _deposit;
     }
 
@@ -124,7 +124,6 @@ contract VaultImplementation is Pausable{
         _;
     }
 
-    // TODO: ADD THESE MODIFIERS + TEST CASE
     modifier onlyIfOwnerChunkNotClaimed() {
         require(isOwnerChunkReturned == false, "Owner already claimed his chunk");
         _;
@@ -132,6 +131,16 @@ contract VaultImplementation is Pausable{
 
     modifier onlyIfRenterChunkNotClaimed() {
         require(isRenterChunkReturned == false, "Renter already claimed his chunk");
+        _;
+    }
+
+    modifier onlyIfRentalPeriodEnded() {
+        require(block.timestamp > rentalPeriodEnd, "Rental period not ended");
+        _;
+    }
+
+    modifier onlyIfRenterAddress(address renterAddress) {
+        require(renterAddress !=  address(0), "Renter address needed");
         _;
     }
 
@@ -144,7 +153,7 @@ contract VaultImplementation is Pausable{
     }
     
 
-    function initialize(Initialization calldata initialization) external onlyIfNotBase onlyIfNotAlreadyInitialized whenNotPaused {
+    function initialize(Initialization calldata initialization) external onlyIfNotBase onlyIfNotAlreadyInitialized onlyIfRenterAddress(initialization._propertyRenter) whenNotPaused {
         generalAdmin = initialization._factoryOwner;
         factory = msg.sender;
         vaultImplementationVersion = initialization._vaultImplementationVersion;
@@ -152,6 +161,7 @@ contract VaultImplementation is Pausable{
         vaultId = initialization._vaultId;
         propertyOwner = initialization._propertyOwner;
         propertyRenter = initialization._propertyRenter;
+        rentalPeriodEnd = initialization._rentalPeriodEnd;
         deposit = initialization._deposit;
     }
 
@@ -161,14 +171,11 @@ contract VaultImplementation is Pausable{
     ///
 
     function storeDeposit() external payable onlyIfPropertyRenterOrNotSet onlyIfDepositNotStored onlyIfEqualToDeposit whenNotPaused{
-        if (propertyRenter == address(0)) {
-            propertyRenter = msg.sender;
-        }
         isDepositStored = true;
         emit DepositStored(vaultId, propertyOwner, propertyRenter, deposit);
     }
 
-    function setAmountToReturn(uint256 proposedAmount) external onlyIfPropertyOwner onlyIfDepositStored onlyIfAmountNotAccepted onlyWithinDepositAmount(proposedAmount) whenNotPaused{
+    function setAmountToReturn(uint256 proposedAmount) external onlyIfRentalPeriodEnded onlyIfPropertyOwner onlyIfDepositStored onlyIfAmountNotAccepted onlyWithinDepositAmount(proposedAmount) whenNotPaused{
         uint256 previousAmount = amountToReturn;
         amountToReturn = proposedAmount;
 
@@ -184,7 +191,7 @@ contract VaultImplementation is Pausable{
         emit AmountToReturnAccepted(vaultId, propertyOwner, propertyRenter, deposit, amountToReturn);
     }
 
-    function claimRenterDeposit() external onlyIfPropertyRenter onlyIfDepositStored onlyIfAmountAccepted whenNotPaused{
+    function claimRenterDeposit() external onlyIfPropertyRenter onlyIfDepositStored onlyIfAmountAccepted onlyIfRenterChunkNotClaimed whenNotPaused{
         isRenterChunkReturned = true;
         _safeTransfer(msg.sender, amountToReturn);
         emit RenterDepositChunkReturned(vaultId, propertyOwner, propertyRenter, deposit, amountToReturn);
@@ -194,7 +201,7 @@ contract VaultImplementation is Pausable{
         }
     }
 
-    function claimOwnerDeposit() external onlyIfPropertyOwner onlyIfDepositStored onlyIfAmountAccepted whenNotPaused {
+    function claimOwnerDeposit() external onlyIfPropertyOwner onlyIfDepositStored onlyIfAmountAccepted onlyIfOwnerChunkNotClaimed whenNotPaused {
         isOwnerChunkReturned = true;
         uint256 ownerChunk = deposit - amountToReturn;
         _safeTransfer(msg.sender, ownerChunk);

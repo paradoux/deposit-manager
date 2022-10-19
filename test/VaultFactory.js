@@ -15,6 +15,8 @@ let factoryOwner,
   vaultFactoryContract
 
 const depositAmount = ethers.utils.parseEther("0.1")
+const oneWeekInSeconds = 604800
+const rentalEnd = Math.floor(Date.now() / 1000) + oneWeekInSeconds
 
 context("VaultFactoryContract", function () {
   beforeEach(async function () {
@@ -43,6 +45,7 @@ context("VaultFactoryContract", function () {
             _vaultId: "0",
             _propertyOwner: propertyOwner.address,
             _propertyRenter: propertyRenter.address,
+            _rentalPeriodEnd: rentalEnd,
             _deposit: depositAmount
           }),
           "The implementation contract can't be initialized"
@@ -55,7 +58,7 @@ context("VaultFactoryContract", function () {
         await createAndDeployContracts()
         await vaultFactoryContract
           .connect(secondAccount)
-          .createNewVault(depositAmount, propertyRenter.address)
+          .createNewVault(depositAmount, propertyRenter.address, rentalEnd)
         const clonedContract = await vaultFactoryContract.deployedVaults(0)
         const clonedVaultContract = await VaultImplementationContract.attach(
           clonedContract.deployedAddress
@@ -68,6 +71,7 @@ context("VaultFactoryContract", function () {
             _vaultId: "0",
             _propertyOwner: propertyOwner.address,
             _propertyRenter: propertyRenter.address,
+            _rentalPeriodEnd: rentalEnd,
             _deposit: depositAmount
           }),
           "Contract already initialized"
@@ -108,7 +112,7 @@ context("VaultFactoryContract", function () {
         await expectRevert(
           vaultFactoryContract
             .connect(secondAccount)
-            .createNewVault(depositAmount, propertyRenter.address),
+            .createNewVault(depositAmount, propertyRenter.address, rentalEnd),
           "Pausable: paused"
         )
       })
@@ -119,7 +123,7 @@ context("VaultFactoryContract", function () {
         await createAndDeployContracts()
         await vaultFactoryContract
           .connect(propertyOwner)
-          .createNewVault(depositAmount, propertyRenter.address)
+          .createNewVault(depositAmount, propertyRenter.address, rentalEnd)
 
         const newVault = await vaultFactoryContract.deployedVaults(0)
 
@@ -149,10 +153,10 @@ context("VaultFactoryContract", function () {
         await createAndDeployContracts()
         await vaultFactoryContract
           .connect(propertyOwner)
-          .createNewVault(depositAmount, propertyRenter.address)
+          .createNewVault(depositAmount, propertyRenter.address, rentalEnd)
         await vaultFactoryContract
           .connect(propertyOwner)
-          .createNewVault(depositAmount, propertyRenter.address)
+          .createNewVault(depositAmount, propertyRenter.address, rentalEnd)
 
         const firstVault = await vaultFactoryContract.deployedVaults(0)
         const secondVault = await vaultFactoryContract.deployedVaults(1)
@@ -170,7 +174,7 @@ context("VaultFactoryContract", function () {
         await expect(
           vaultFactoryContract
             .connect(propertyOwner)
-            .createNewVault(depositAmount, propertyRenter.address)
+            .createNewVault(depositAmount, propertyRenter.address, rentalEnd)
         )
           .to.emit(vaultFactoryContract, "VaultCreated")
           .withArgs(
@@ -181,44 +185,25 @@ context("VaultFactoryContract", function () {
             vaultFactoryContract.address,
             propertyOwner.address,
             propertyRenter.address,
+            rentalEnd,
             depositAmount
           )
       })
     })
 
     describe("when new vault gets created without a renter provided", function () {
-      it("should create a new vault with the correct data", async function () {
+      it("should revert with the correct message", async function () {
         await createAndDeployContracts()
-        await vaultFactoryContract
-          .connect(propertyOwner)
-          .createNewVault(
-            depositAmount,
-            "0x0000000000000000000000000000000000000000"
-          )
 
-        const newVault = await vaultFactoryContract.deployedVaults(0)
-
-        const clonedVaultContract = await VaultImplementationContract.attach(
-          newVault.deployedAddress
-        )
-
-        const responseGeneralAdmin = await clonedVaultContract.generalAdmin()
-        const responsePropertyOwner = await clonedVaultContract.propertyOwner()
-        const responseFactory = await clonedVaultContract.factory()
-        const responseVaultId = await clonedVaultContract.vaultId()
-        const responseVaultImplementationVersion =
-          await clonedVaultContract.vaultImplementationVersion()
-        const responsePropertyRenter =
-          await clonedVaultContract.propertyRenter()
-
-        expect(responseGeneralAdmin).to.be.equal(factoryOwner.address)
-        expect(responsePropertyOwner).to.be.equal(propertyOwner.address)
-        expect(responseFactory).to.be.equal(vaultFactoryContract.address)
-        expect(responseVaultId).to.be.equal("0")
-        expect(responseVaultImplementationVersion).to.be.equal("0")
-        expect(responseVaultId).to.be.equal("0")
-        expect(responsePropertyRenter).to.be.equal(
-          "0x0000000000000000000000000000000000000000"
+        await expectRevert(
+          vaultFactoryContract
+            .connect(propertyOwner)
+            .createNewVault(
+              depositAmount,
+              "0x0000000000000000000000000000000000000000",
+              rentalEnd
+            ),
+          "Renter address needed"
         )
       })
     })
@@ -229,10 +214,10 @@ context("VaultFactoryContract", function () {
       await createAndDeployContracts()
       await vaultFactoryContract
         .connect(propertyOwner)
-        .createNewVault(depositAmount, propertyRenter.address)
+        .createNewVault(depositAmount, propertyRenter.address, rentalEnd)
       await vaultFactoryContract
         .connect(propertyOwner)
-        .createNewVault(depositAmount, propertyRenter.address)
+        .createNewVault(depositAmount, propertyRenter.address, rentalEnd)
 
       const deployedVaults = await vaultFactoryContract
         .connect(secondAccount)

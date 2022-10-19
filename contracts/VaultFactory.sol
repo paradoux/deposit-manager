@@ -47,7 +47,7 @@ contract VaultFactory is Pausable, Ownable  {
     /// EVENTS
     ///
 
-    event VaultCreated(uint256 vaultId, address vaultAddress, uint256 vaultImplementationVersion, address generalAdmin, address factoryAddress, address propertyOwner, address propertyRenter, uint256 deposit);
+    event VaultCreated(uint256 vaultId, address vaultAddress, uint256 vaultImplementationVersion, address generalAdmin, address factoryAddress, address propertyOwner, address propertyRenter, uint256 rentalPeriodEnd, uint256 deposit);
     event FailedTransfer(address receiver, uint256 amount);
 
     constructor(
@@ -60,7 +60,8 @@ contract VaultFactory is Pausable, Ownable  {
 
     function createNewVault(
         uint256 deposit,
-        address renter
+        address renter,
+        uint256 rentalPeriodEnd
     )
         public
         whenNotPaused
@@ -76,6 +77,7 @@ contract VaultFactory is Pausable, Ownable  {
             _vaultId: vaultId,
             _propertyOwner: msg.sender,
             _propertyRenter: renter,
+            _rentalPeriodEnd: rentalPeriodEnd,
             _deposit: deposit
         }));
 
@@ -88,7 +90,7 @@ contract VaultFactory is Pausable, Ownable  {
             })
         );
 
-        emit VaultCreated(vaultId, newVaultAddress, latestVaultImplementationVersionId, owner(), address(this), msg.sender, renter, deposit);
+        emit VaultCreated(vaultId, newVaultAddress, latestVaultImplementationVersionId, owner(), address(this), msg.sender, renter, rentalPeriodEnd, deposit);
         vaultId += 1;
         return newVaultAddress;
     }
