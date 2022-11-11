@@ -31,6 +31,9 @@ contract VaultFactory is Pausable, Ownable  {
         uint256 id;
         uint256 versionId;
         address creator;
+        address renter;
+        uint256 rentalPeriodEnd;
+        uint256 deposit;
         address deployedAddress;
     }
 
@@ -63,7 +66,7 @@ contract VaultFactory is Pausable, Ownable  {
         address renter,
         uint256 rentalPeriodEnd
     )
-        public
+        external
         whenNotPaused
         returns (address vault)
     {
@@ -86,6 +89,9 @@ contract VaultFactory is Pausable, Ownable  {
                 id: vaultId,
                 versionId: latestVaultImplementationVersionId,
                 creator: msg.sender,
+                renter: renter,
+                rentalPeriodEnd: rentalPeriodEnd,
+                deposit: deposit,
                 deployedAddress: newVaultAddress
             })
         );
@@ -100,15 +106,15 @@ contract VaultFactory is Pausable, Ownable  {
     ///ADMIN FUNCTIONS
     ///
 
-    function setAdmin(address _adminAddress) public onlyAdmin {
+    function setAdmin(address _adminAddress) external onlyAdmin {
         transferOwnership(_adminAddress);
     }
 
-    function withdrawFunds(address receiver) public onlyAdmin {
+    function withdrawFunds(address receiver) external onlyAdmin {
         _safeTransfer(receiver, address(this).balance);
     }
 
-    function setNewVaultImplementation(address _vaultImplementation) public onlyAdmin {
+    function setNewVaultImplementation(address _vaultImplementation) external onlyAdmin {
         latestVaultImplementationVersionId += 1;
         vaultImplementations.push(
             VaultImplementationVersion({id: latestVaultImplementationVersionId, deployedAddress: _vaultImplementation})

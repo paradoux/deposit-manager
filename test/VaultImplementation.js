@@ -32,6 +32,7 @@ context("VaultFactoryContract", function () {
     const startedBlockTimestamp = startedBlock.timestamp
     rentalEnd = startedBlockTimestamp + oneWeekInSeconds
   })
+
   context("Contract Initialization", function () {
     describe("when factoryOwner has deployed the Factory Contract", async function () {
       it("should be set as the generalAdmin of the created vault", async function () {
@@ -780,6 +781,34 @@ context("VaultFactoryContract", function () {
 
         const responseIsPaused = await deployedVault.paused()
         expect(responseIsPaused).to.be.false
+      })
+    })
+  })
+
+  context("Vault details", function () {
+    beforeEach(async function () {
+      await createAndDeployContracts(factoryOwner)
+      await initializeVault(
+        propertyOwner,
+        depositAmount,
+        propertyRenter.address,
+        rentalEnd
+      )
+    })
+
+    describe("when users asks for vault details", function () {
+      it("should return the vault details", async function () {
+        const vaultDetails = await deployedVault.getVaultDetails()
+        expect(vaultDetails.vaultId).to.be.equal("0")
+        expect(vaultDetails.propertyOwner).to.be.equal(propertyOwner.address)
+        expect(vaultDetails.propertyRenter).to.be.equal(propertyRenter.address)
+        expect(vaultDetails.rentalPeriodEnd).to.be.equal(rentalEnd)
+        expect(vaultDetails.deposit).to.be.equal(depositAmount)
+        expect(vaultDetails.amountToReturn).to.be.equal(0)
+        expect(vaultDetails.isDepositStored).to.be.equal(false)
+        expect(vaultDetails.isAmountAccepted).to.be.equal(false)
+        expect(vaultDetails.isRenterChunkReturned).to.be.equal(false)
+        expect(vaultDetails.isOwnerChunkReturned).to.be.equal(false)
       })
     })
   })

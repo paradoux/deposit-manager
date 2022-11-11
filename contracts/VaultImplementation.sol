@@ -40,6 +40,19 @@ contract VaultImplementation is Pausable{
         uint256 _deposit;
     }
 
+    struct VaultDetails {
+        uint256 vaultId;
+        address propertyOwner;
+        address propertyRenter;
+        uint256 rentalPeriodEnd;
+        uint256 deposit;
+        uint256  amountToReturn;
+        bool isDepositStored;
+        bool isAmountAccepted;
+        bool isRenterChunkReturned;
+        bool isOwnerChunkReturned;
+    }
+
     ///
     /// EVENTS
     ///
@@ -210,6 +223,25 @@ contract VaultImplementation is Pausable{
         if (isRenterChunkReturned == true) {
             _pause();
         }
+    }
+
+    ///
+    ///GETTER FUNCTIONS
+    ///
+
+    function getVaultDetails() external view returns (VaultDetails memory)  {
+        return VaultDetails({
+            vaultId: vaultId,
+            propertyOwner: propertyOwner,
+            propertyRenter: propertyRenter,
+            rentalPeriodEnd: rentalPeriodEnd,
+            deposit: deposit,
+            amountToReturn: amountToReturn,
+            isDepositStored: isDepositStored,
+            isAmountAccepted: isAmountAccepted,
+            isRenterChunkReturned: isRenterChunkReturned,
+            isOwnerChunkReturned: isOwnerChunkReturned
+        });
     }
 
     ///
