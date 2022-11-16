@@ -46,6 +46,7 @@ contract VaultImplementation is Pausable{
         address propertyRenter;
         uint256 rentalPeriodEnd;
         uint256 deposit;
+        address deployedAddress;
         uint256  amountToReturn;
         bool isDepositStored;
         bool isAmountAccepted;
@@ -236,6 +237,7 @@ contract VaultImplementation is Pausable{
             propertyRenter: propertyRenter,
             rentalPeriodEnd: rentalPeriodEnd,
             deposit: deposit,
+            deployedAddress: address(this),
             amountToReturn: amountToReturn,
             isDepositStored: isDepositStored,
             isAmountAccepted: isAmountAccepted,

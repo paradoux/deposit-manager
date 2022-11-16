@@ -26,7 +26,7 @@ context("VaultFactoryContract", function () {
       secondAccount,
       thirdAccount,
       propertyRenter,
-      propertyOwner
+      propertyOwner,
     ] = await ethers.getSigners()
     const startedBlock = await ethers.provider.getBlock()
     const startedBlockTimestamp = startedBlock.timestamp
@@ -804,6 +804,7 @@ context("VaultFactoryContract", function () {
         expect(vaultDetails.propertyRenter).to.be.equal(propertyRenter.address)
         expect(vaultDetails.rentalPeriodEnd).to.be.equal(rentalEnd)
         expect(vaultDetails.deposit).to.be.equal(depositAmount)
+        expect(vaultDetails.deployedAddress).to.be.equal(deployedVault.address)
         expect(vaultDetails.amountToReturn).to.be.equal(0)
         expect(vaultDetails.isDepositStored).to.be.equal(false)
         expect(vaultDetails.isAmountAccepted).to.be.equal(false)
