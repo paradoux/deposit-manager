@@ -13,8 +13,7 @@
     "create-new-vault:testnet": "hardhat run --network polygonMumbai scripts/create-new-vault.js",
     "interact-with-vault:local": "hardhat run --network localhost scripts/interact-with-vault.js",
     "interact-with-vault:testnet": "hardhat run --network polygonMumbai scripts/interact-with-vault.js",
-    "interact-with-factory:local": "hardhat run --network localhost scripts/interact-with-factory.js",
-    "interact-with-factory:testnet": "hardhat run --network polygonMumbai scripts/interact-with-factory.js"
+    "interact-with-factory:local": "hardhat run --network localhost scripts/interact-with-factory.js"
   },
   "repository": {
     "type": "git",
@@ -34,7 +33,7 @@
   },
   "dependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^1.0.3",
-    "@openzeppelin/contracts": "^4.7.3",
+    "@openzeppelin/contracts": "^4.8.0",
     "@openzeppelin/test-helpers": "^0.5.16"
   }
 }

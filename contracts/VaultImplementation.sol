@@ -1,18 +1,41 @@
+//SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IVaultSortedList} from "./interface/IVaultSortedList.sol";
+import {IDeFiRouter} from "./interface/IDeFiRouter.sol";
+import {IPool} from "./interface/IPool.sol";
 
 contract VaultImplementation is Pausable{
     using Address for address;
 
     ///
+    /// ERROR
+    ///
+    error rentalPeriodDoesNotPass(uint256 _rentalPeriodEnd,uint256 _currentTime);
+
+    ///
+    /// CONSTANT VARIABLES
+    ///
+    bytes32 constant VAULT_SORTED_LIST_MANAGER = 0x619a10e1d10da142c7a64557af737368a04c9a5658b05c381e703cf6a7a091e9; 
+    address public constant DEFI_ROUTER_ADDRESS = 0x574ebEc067d94E4FcDbCA74DF035c562b7E816A7;  
+    address public constant AAVE_MUMBAI_DAI_ADDRESS = 0x9A753f0F7886C9fbF63cF59D0D4423C5eFaCE95B; 
+    address public constant ADMIN_FEE_COLLECTOR = 0xECAFBCCec8fc5a50e3D896bFfDeFde0fc0b336d3; 
+    IVaultSortedList public constant VAULT_SORTED_LIST = IVaultSortedList(0x86C6389cE6B243561144cD8356c94663934d127a);
+    IDeFiRouter public constant DEFI_ROUTER = IDeFiRouter(DEFI_ROUTER_ADDRESS );
+    IERC20  public constant AAVE_MUMBAI_DAI = IERC20(AAVE_MUMBAI_DAI_ADDRESS);
+    uint256 public constant MAX_UITNT_256 = ~uint256(0); 
+    
+    ///
     /// VARIABLES
     ///
-
+    
     bool private isBase;
     address public generalAdmin;
     address public factory;
+    address public aaveLendingPool;
     uint256 public vaultImplementationVersion;
 
     uint256 public vaultId;
@@ -26,6 +49,7 @@ contract VaultImplementation is Pausable{
     bool public isRenterChunkReturned;
     bool public isOwnerChunkReturned;
 
+    
     ///
     /// STRUCTS
     ///
@@ -38,6 +62,7 @@ contract VaultImplementation is Pausable{
         address _propertyRenter;
         uint256 _rentalPeriodEnd;
         uint256 _deposit;
+        address _lendingPool;
     }
 
     struct VaultDetails {
@@ -171,7 +196,7 @@ contract VaultImplementation is Pausable{
         generalAdmin = initialization._factoryOwner;
         factory = msg.sender;
         vaultImplementationVersion = initialization._vaultImplementationVersion;
-        
+        aaveLendingPool = initialization._lendingPool;
         vaultId = initialization._vaultId;
         propertyOwner = initialization._propertyOwner;
         propertyRenter = initialization._propertyRenter;
@@ -186,7 +211,27 @@ contract VaultImplementation is Pausable{
 
     function storeDeposit() external payable onlyIfPropertyRenterOrNotSet onlyIfDepositNotStored onlyIfEqualToDeposit whenNotPaused{
         isDepositStored = true;
+        VAULT_SORTED_LIST.addEndOfDate(address(this), rentalPeriodEnd);
+        DEFI_ROUTER.addDepositToAAVE{value:msg.value}();
         emit DepositStored(vaultId, propertyOwner, propertyRenter, deposit);
+    }
+
+    //Ukeeper will automatically call this function after the end of rental period.
+    function removeDepositFromAAVE() external {
+        if(rentalPeriodEnd > block.timestamp) {
+            revert rentalPeriodDoesNotPass(rentalPeriodEnd,block.timestamp);
+        }
+        address currentValut = address(this);
+        IPool(aaveLendingPool).withdraw(AAVE_MUMBAI_DAI_ADDRESS,MAX_UITNT_256,currentValut);
+        uint256 daiBalanceOf = AAVE_MUMBAI_DAI.balanceOf(currentValut);
+        AAVE_MUMBAI_DAI.approve(DEFI_ROUTER_ADDRESS, daiBalanceOf);
+        uint256 maticReceived = DEFI_ROUTER.swapToMatic();
+        uint256 profitsToAdmin = maticReceived > deposit ? maticReceived - deposit : 0;
+        if(profitsToAdmin > 0){
+            _safeTransfer(ADMIN_FEE_COLLECTOR,profitsToAdmin);
+        }
+        VAULT_SORTED_LIST.removeVault(currentValut);
+        VAULT_SORTED_LIST.renounceRole(VAULT_SORTED_LIST_MANAGER,address(this));
     }
 
     function setAmountToReturn(uint256 proposedAmount) external onlyIfRentalPeriodEnded onlyIfPropertyOwner onlyIfDepositStored onlyIfAmountNotAccepted onlyWithinDepositAmount(proposedAmount) whenNotPaused{

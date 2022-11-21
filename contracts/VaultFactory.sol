@@ -1,3 +1,4 @@
+//SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -5,13 +6,20 @@ import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 
 import {VaultImplementation} from "./VaultImplementation.sol";
-
+import {IVaultSortedList} from "./interface/IVaultSortedList.sol";
+import {IPoolAddressProvider} from "./interface/IPoolAddressProvider.sol";
 contract VaultFactory is Pausable, Ownable  {
+
+    ///
+    /// CONSTANT VARIABLES
+    ///
+    bytes32 constant VAULT_SORTED_LIST_MANAGER = 0x619a10e1d10da142c7a64557af737368a04c9a5658b05c381e703cf6a7a091e9; 
+    IVaultSortedList public constant VAULT_SORTED_LIST = IVaultSortedList(0x86C6389cE6B243561144cD8356c94663934d127a);
+    IPoolAddressProvider public constant POOL_ADDRESS_PROVIDER = IPoolAddressProvider(0x5343b5bA672Ae99d627A1C87866b8E53F47Db2E6);
 
     ///
     /// VARIABLES
     ///
-
     uint256 public latestVaultImplementationVersionId;
     VaultImplementationVersion[] public vaultImplementations;
     uint256 public vaultId = 0;
@@ -81,7 +89,8 @@ contract VaultFactory is Pausable, Ownable  {
             _propertyOwner: msg.sender,
             _propertyRenter: renter,
             _rentalPeriodEnd: rentalPeriodEnd,
-            _deposit: deposit
+            _deposit: deposit,
+            _lendingPool: POOL_ADDRESS_PROVIDER.getPool()
         }));
 
         deployedVaults.push(
@@ -96,6 +105,7 @@ contract VaultFactory is Pausable, Ownable  {
             })
         );
 
+        VAULT_SORTED_LIST.grantRole(VAULT_SORTED_LIST_MANAGER, newVaultAddress);
         emit VaultCreated(vaultId, newVaultAddress, latestVaultImplementationVersionId, owner(), address(this), msg.sender, renter, rentalPeriodEnd, deposit);
         vaultId += 1;
         return newVaultAddress;
