@@ -8,7 +8,7 @@
     "test": "hardhat test",
     "deploy:local": "hardhat run --network localhost scripts/deploy.js",
     "deploy:testnet": "hardhat run --network polygonMumbai scripts/deploy.js",
-    "verify:testnet": "npx hardhat verify --network polygonMumbai 0xC7433eBC21b216fe6484DA1b8A7bC3e4b1055279 0x9F5bc02E5167FE98C4933BE0a8A7DBC217F7cb78",
+    "verify:testnet": "npx hardhat verify --network polygonMumbai 0xb7449B6eBd89F8e40040FA8FDD4E587A4e5747a6 0x11eb8Cec495EE5731Fc723A16E37dff4c226D324",
     "create-new-vault:local": "hardhat run --network localhost scripts/create-new-vault.js",
     "create-new-vault:testnet": "hardhat run --network polygonMumbai scripts/create-new-vault.js",
     "interact-with-vault:local": "hardhat run --network localhost scripts/interact-with-vault.js",
