@@ -1,4 +1,7 @@
 # SmartDeposit
+# Live demo
+
+[SmartDeposit Live dApp](https://deposit-manager-front.vercel.app/)
 
 # Description
 
@@ -32,6 +35,3 @@ Thanks to SmartDeposit, all these problems are sorted. Any owner of any item can
   <!-- - [Chainlink Keeper](https://docs.chain.link/docs/chainlink-automation/introduction/)
   - [TypeChain](https://github.com/dethcrypto/TypeChain) - Hooking with [Wagmi](https://github.com/wagmi-dev/wagmi) - Securing with [Mythril](https://github.com/ConsenSys/mythril) - Analyzing with [Slither](https://github.com/crytic/slither) - Coverage with [Solidity Coverage](https://github.com/sc-forks/solidity-coverage) - Linting with [Solhint](https://github.com/protofire/solhint) - Linting with [ESLint](https://eslint.org) - Formatting with [Prettier](https://prettier.io) -->
 
-# Live demo
-
-[SmartDeposit Live dApp](https://deposit-manager-front.vercel.app/)
